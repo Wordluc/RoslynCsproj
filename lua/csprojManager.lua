@@ -16,15 +16,16 @@ end
 ---@param fullpath string full path of the file
 ---@param client vim.lsp.Client client
 ---@param typeOperation "created" | "changed" | "deleted"
-local function did_change_watched_file(fullpath,client,typeOperation)
-	client.request("workspace/didChangeWatchedFiles", {
-		changes = {
-			{
-				uri = fullpath,
-				type = typeOperation
-			}
-		}
-	})
+local function did_change_watched_file(fullpath, client, typeOperation)
+---roslyn seems to not implement didChangeWatchedFiles
+--	client.request("workspace/didChangeWatchedFiles", {
+--		changes = {
+--			{
+--				uri = fullpath,
+--				type = typeOperation
+--			}
+--		}
+--	})
 end
 ---@param path1 string
 ---@param path2 string
@@ -94,14 +95,14 @@ M.add_element = function(totalpath)
 	local stdout = uv.new_pipe()
 	local stderr = uv.new_pipe()
 	local script_path = debug.getinfo(1, "S").source:sub(2)
-	local executable_path = script_path:match(".*/") .. "../../csprojManager/csprojManager.exe"
+	local executable_path = script_path:match(".*/") .. "/csprojManager/csprojManager.exe"
 	local handle, pid = uv.spawn(
-		executable_path
-		, { stdio = { stdin, stdout, stderr } }, function()
-			stdin:close()
-			stdout:close()
-			stderr:close()
-		end
+	executable_path
+	, { stdio = { stdin, stdout, stderr } }, function()
+		stdin:close()
+		stdout:close()
+		stderr:close()
+	end
 	)
 	if not pid or not handle then
 		print("error:manager not found,path:" .. executable_path)
@@ -124,7 +125,7 @@ M.add_element = function(totalpath)
 		if data then
 			vim.schedule(function()
 				for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
-					did_change_watched_file(vim.uri_from_bufnr(0),client, "created")
+					did_change_watched_file(vim.uri_from_bufnr(0), client, "created")
 				end
 				print(data)
 			end)
@@ -133,10 +134,12 @@ M.add_element = function(totalpath)
 	stderr:read_start(function(e, data)
 		assert(not e, e)
 		if data then
-			for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
-				did_change_watched_file(vim.uri_from_bufnr(0),client, "changed")
-			end
-			print(data)
+			vim.schedule(function()
+				for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
+					did_change_watched_file(vim.uri_from_bufnr(0), client, "changed")
+				end
+				print(data)
+			end)
 		end
 	end)
 end
@@ -163,14 +166,14 @@ M.remove_element = function(totalpath) --TODO
 	local stdout = uv.new_pipe()
 	local stderr = uv.new_pipe()
 	local script_path = debug.getinfo(1, "S").source:sub(2)
-	local executable_path = script_path:match(".*/") .. "../../csprojManager/csprojManager.exe"
+	local executable_path = script_path:match(".*/") .. "/csprojManager/csprojManager.exe"
 	local handle, pid = uv.spawn(
-		executable_path
-		, { stdio = { stdin, stdout, stderr } }, function()
-			stdin:close()
-			stdout:close()
-			stderr:close()
-		end
+	executable_path
+	, { stdio = { stdin, stdout, stderr } }, function()
+		stdin:close()
+		stdout:close()
+		stderr:close()
+	end
 	)
 	if not pid or not handle then
 		print("error:manager not found,path:" .. executable_path)
@@ -189,7 +192,7 @@ M.remove_element = function(totalpath) --TODO
 		if data then
 			vim.schedule(function()
 				for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
-					did_change_watched_file(vim.uri_from_bufnr(0),client, "deleted")
+					did_change_watched_file(vim.uri_from_bufnr(0), client, "deleted")
 				end
 				print(data)
 			end)
@@ -198,10 +201,12 @@ M.remove_element = function(totalpath) --TODO
 	stderr:read_start(function(e, data)
 		assert(not e, e)
 		if data then
-			for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
-				did_change_watched_file(vim.uri_from_bufnr(0),client, "changed")
-			end
-			print(data)
+			vim.schedule(function()
+				for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
+					did_change_watched_file(vim.uri_from_bufnr(0), client, "changed")
+				end
+				print(data)
+			end)
 		end
 	end)
 end
