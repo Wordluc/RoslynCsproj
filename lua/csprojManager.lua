@@ -13,7 +13,19 @@ local function get_path_from_fullpath(fullpath)
 	end
 	return fullpath:sub(1, - #nameFile - 1)
 end
-
+---@param fullpath string full path of the file
+---@param client vim.lsp.Client client
+---@param typeOperation "created" | "changed" | "deleted"
+local function did_change_watched_file(fullpath,client,typeOperation)
+	client.request("workspace/didChangeWatchedFiles", {
+		changes = {
+			{
+				uri = fullpath,
+				type = typeOperation
+			}
+		}
+	})
+end
 ---@param path1 string
 ---@param path2 string
 ---@return string --it return the relative path from path1 to path2
@@ -111,8 +123,9 @@ M.add_element = function(totalpath)
 		assert(not e, e)
 		if data then
 			vim.schedule(function()
-				require("roslyn.slnutils").did_change_watched_file(vim.uri_from_bufnr(0),
-				vim.lsp.get_clients({ name = "roslyn" })[1], 1)
+				for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
+					did_change_watched_file(vim.uri_from_bufnr(0),client, "created")
+				end
 				print(data)
 			end)
 		end
@@ -120,6 +133,9 @@ M.add_element = function(totalpath)
 	stderr:read_start(function(e, data)
 		assert(not e, e)
 		if data then
+			for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
+				did_change_watched_file(vim.uri_from_bufnr(0),client, "changed")
+			end
 			print(data)
 		end
 	end)
@@ -172,8 +188,9 @@ M.remove_element = function(totalpath) --TODO
 		assert(not e, e)
 		if data then
 			vim.schedule(function()
-				require("roslyn.slnutils").did_change_watched_file(vim.uri_from_bufnr(0),
-				vim.lsp.get_clients({ name = "roslyn" })[1], 1)
+				for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
+					did_change_watched_file(vim.uri_from_bufnr(0),client, "deleted")
+				end
 				print(data)
 			end)
 		end
@@ -181,6 +198,9 @@ M.remove_element = function(totalpath) --TODO
 	stderr:read_start(function(e, data)
 		assert(not e, e)
 		if data then
+			for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
+				did_change_watched_file(vim.uri_from_bufnr(0),client, "changed")
+			end
 			print(data)
 		end
 	end)
