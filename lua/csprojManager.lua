@@ -17,15 +17,44 @@ end
 ---@param client vim.lsp.Client client
 ---@param typeOperation "created" | "changed" | "deleted"
 local function did_change_watched_file(fullpath, client, typeOperation)
----roslyn seems to not implement didChangeWatchedFiles
---	client.request("workspace/didChangeWatchedFiles", {
---		changes = {
---			{
---				uri = fullpath,
---				type = typeOperation
---			}
---		}
---	})
+	vim.defer_fn(
+		function()
+			local types={
+				"created" , "changed" , "deleted"}
+				---comment
+				---@param array {}string 
+				---@param element any
+				---@return number
+				local function find(array,element)
+					for i,el in pairs(array) do
+						if el==element then
+							return i
+						end
+					end 
+					return -1
+				end
+				local indexType=find(types,typeOperation)
+				if indexType==-1 then
+					print("error type")
+					return
+				end
+				client.request("workspace/didChangeWatchedFiles", {
+					changes = {
+						{
+							uri = "file:///"..fullpath:sub(1,fullpath:len()-1),
+							type = indexType
+						}
+					}
+				}, function(err, result)
+					print("didChangeWatchedFiles ",fullpath,indexType)
+					if err ~= nil then
+						print(err)
+					end
+					if result ~= nil then
+						print(result)
+					end
+				end)
+		end,1000)
 end
 ---@param path1 string
 ---@param path2 string
@@ -125,7 +154,7 @@ M.add_element = function(totalpath)
 		if data then
 			vim.schedule(function()
 				for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
-					did_change_watched_file(vim.uri_from_bufnr(0), client, "created")
+					did_change_watched_file(totalpath, client, "created")
 				end
 				print(data)
 			end)
@@ -134,12 +163,7 @@ M.add_element = function(totalpath)
 	stderr:read_start(function(e, data)
 		assert(not e, e)
 		if data then
-			vim.schedule(function()
-				for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
-					did_change_watched_file(vim.uri_from_bufnr(0), client, "changed")
-				end
-				print(data)
-			end)
+			print(data)
 		end
 	end)
 end
@@ -192,7 +216,7 @@ M.remove_element = function(totalpath) --TODO
 		if data then
 			vim.schedule(function()
 				for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
-					did_change_watched_file(vim.uri_from_bufnr(0), client, "deleted")
+					did_change_watched_file(totalpath, client, "deleted")
 				end
 				print(data)
 			end)
@@ -201,12 +225,7 @@ M.remove_element = function(totalpath) --TODO
 	stderr:read_start(function(e, data)
 		assert(not e, e)
 		if data then
-			vim.schedule(function()
-				for _, client in pairs(vim.lsp.get_clients({ name = "roslyn" })) do
-					did_change_watched_file(vim.uri_from_bufnr(0), client, "changed")
-				end
-				print(data)
-			end)
+			print(data)
 		end
 	end)
 end
