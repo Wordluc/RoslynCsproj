@@ -17,44 +17,39 @@ end
 ---@param client vim.lsp.Client client
 ---@param typeOperation "created" | "changed" | "deleted"
 local function did_change_watched_file(fullpath, client, typeOperation)
-	vim.defer_fn(
-		function()
-			local types={
-				"created" , "changed" , "deleted"}
-				---comment
-				---@param array {}string 
-				---@param element any
-				---@return number
-				local function find(array,element)
-					for i,el in pairs(array) do
-						if el==element then
-							return i
-						end
-					end 
-					return -1
-				end
-				local indexType=find(types,typeOperation)
-				if indexType==-1 then
-					print("error type")
-					return
-				end
-				client.request("workspace/didChangeWatchedFiles", {
-					changes = {
-						{
-							uri = "file:///"..fullpath:sub(1,fullpath:len()-1),
-							type = indexType
-						}
-					}
-				}, function(err, result)
-					print("didChangeWatchedFiles ",fullpath,indexType)
-					if err ~= nil then
-						print(err)
-					end
-					if result ~= nil then
-						print(result)
-					end
-				end)
-		end,1000)
+	local uri = vim.uri_from_fname(fullpath)
+	local types = { "created", "changed", "deleted" }
+
+	---comment
+	---@param array {}string
+	---@param element any
+	---@return number
+	local function find(array, element)
+		for i, el in pairs(array) do
+			if el == element then
+				return i
+			end
+		end
+		return 0
+	end
+
+	local indexType = find(types, typeOperation)
+	if indexType == 0 then
+		print("Error: Invalid operation type:", typeOperation)
+		return
+	end
+
+	client.rpc.request("workspace/didChangeWatchedFiles", {
+		changes = {
+			{
+				uri = uri,
+				type = indexType
+			}
+		}
+	}, function(err, result)
+		print("Error:", err)
+		print("Result:", result)
+	end)
 end
 ---@param path1 string
 ---@param path2 string
@@ -168,8 +163,8 @@ M.add_element = function(totalpath)
 	end)
 end
 ---@param totalpath string --file to remove
-M.remove_element = function(totalpath) --TODO
-	uv.run("nowait")                    -- This is necessary to start the event loop
+M.remove_element = function(totalpath)  --TODO
+	uv.run("nowait")                     -- This is necessary to start the event loop
 	local filePath = get_path_from_fullpath(totalpath)
 	local fileName = get_filename_from_fullpath(totalpath)
 	local csprojPath = ""
